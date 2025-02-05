@@ -5,9 +5,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.commands.BotCommand;
+import org.telegram.telegrambots.meta.api.objects.commands.scope.BotCommandScopeDefault;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Slf4j
 @Component
@@ -21,6 +27,18 @@ public class TelegramBot extends TelegramLongPollingBot {
 
         this.botProperties = botProperties;
         this.messageService = messageService;
+
+        List<BotCommand> commands = new ArrayList<>();
+        commands.add(new BotCommand("/start", "зарегистрироваться"));
+        commands.add(new BotCommand("/help", "вынести окно с командами"));
+        commands.add(new BotCommand("/mydata", "показать сохраненные данные"));
+        commands.add(new BotCommand("/deletedata", "удалить данные"));
+        commands.add(new BotCommand("/settings", "установить свои настройки"));
+        try {
+            execute(new SetMyCommands(commands, new BotCommandScopeDefault(), null));
+        } catch (TelegramApiException e) {
+            log.error("Ошибка при задании списка команд: " + e.getMessage());
+        }
 
     }
 
