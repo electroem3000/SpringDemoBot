@@ -1,4 +1,18 @@
 bot:
     name: "MultiNotieBot"
     token: "7437951308:AAHFvFKXzpMe-JUeJ3O3d8gd4GlyzKeLGD4"
-
+spring:
+    datasource:
+        url: jdbc:postgresql://localhost:5432/tgbot
+        username: postgres
+        password: postgres
+        driver-class-name: org.postgresql.Driver
+    jpa:
+        hibernate:
+            ddl-auto: update
+        database: postgresql
+        database-platform: org.hibernate.dialect.PostgreSQLDialect
+        show-sql: true
+        properties:
+            hibernate:
+                format_sql: true
