@@ -6,7 +6,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands;
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.commands.BotCommand;
 import org.telegram.telegrambots.meta.api.objects.commands.scope.BotCommandScopeDefault;
@@ -39,14 +38,12 @@ public class TelegramBot extends TelegramLongPollingBot {
         } catch (TelegramApiException e) {
             log.error("Ошибка при задании списка команд: " + e.getMessage());
         }
-
     }
 
     @Override
     public void onUpdateReceived(Update update) {
         try {
-            SendMessage message = messageService.messageReceiver(update);
-            execute(message);
+            executeMessage(update);
         } catch (TelegramApiException e) {
             log.error("Ошибка при ответе пользователю!");
         }
@@ -60,5 +57,13 @@ public class TelegramBot extends TelegramLongPollingBot {
     @Override
     public String getBotToken() {
         return botProperties.token();
+    }
+
+    private void executeMessage(Update update) throws TelegramApiException {
+        if (update.hasMessage()) {
+            execute(messageService.messageReceiver(update));
+        } else if (update.hasCallbackQuery()) {
+            execute(messageService.messageEditor(update));
+        }
     }
 }
