@@ -6,8 +6,6 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.sql.Timestamp;
-
 @Setter
 @Getter
 @Entity
@@ -15,6 +13,6 @@ import java.sql.Timestamp;
 public class BotUser {
     @Id
     private Long chatId;
-    private String username;
-    private Timestamp registeredAt;
+    private String status;
+    private String kind;
 }

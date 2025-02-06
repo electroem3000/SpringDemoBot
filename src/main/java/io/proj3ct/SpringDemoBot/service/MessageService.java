@@ -13,7 +13,6 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 
-import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -43,7 +42,7 @@ public class MessageService {
                 }
                 case "/settings": {
                     answer = createMessage(chatId, "Выберите тип аниме.");
-                    chooseType(answer);
+                    chooseKind(answer);
                     break;
                 }
                 default: {
@@ -87,11 +86,11 @@ public class MessageService {
         if (userRepository.findById(message.getChatId()).isEmpty()) {
             BotUser botUser = new BotUser();
             botUser.setChatId(message.getChatId());
-            botUser.setUsername(message.getFrom().getUserName());
-            botUser.setRegisteredAt(new Timestamp(System.currentTimeMillis()));
+            botUser.setKind("None");
+            botUser.setStatus("None");
 
             userRepository.save(botUser);
-            log.info("user saved: " + botUser);
+            log.info("User saved: " + botUser);
         }
     }
 
@@ -102,7 +101,7 @@ public class MessageService {
         return message;
     }
 
-    private void chooseType(SendMessage message) {
+    private void chooseKind(SendMessage message) {
         InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> rows = new ArrayList<>();
         List<InlineKeyboardButton> row = new ArrayList<>();

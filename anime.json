@@ -1,0 +1,41 @@
+[
+    {
+        "id": 16498,
+        "name": "Shingeki no Kyojin",
+        "russian": "Атака титанов",
+        "url": "/animes/16498-shingeki-no-kyojin",
+        "kind": "tv",
+        "score": 8.55,
+        "status": "released",
+        "episodes": 25,
+        "episodes_aired": 25,
+        "aired_on": "2013-04-07",
+        "released_on": "2013-09-29"
+    },
+    {
+        "id": 1535,
+        "name": "Death Note",
+        "russian": "Тетрадь смерти",
+        "url": "/animes/1535-death-note",
+        "kind": "tv",
+        "score": 8.62,
+        "status": "released",
+        "episodes": 37,
+        "episodes_aired": 0,
+        "aired_on": "2006-10-04",
+        "released_on": "2007-06-27"
+    },
+    {
+        "id": 5114,
+        "name": "Fullmetal Alchemist: Brotherhood",
+        "russian": "Стальной алхимик: Братство",
+        "url": "/animes/z5114-fullmetal-alchemist-brotherhood",
+        "kind": "tv",
+        "score": 9.09,
+        "status": "released",
+        "episodes": 64,
+        "episodes_aired": 0,
+        "aired_on": "2009-04-05",
+        "released_on": "2010-07-04"
+    }
+]
