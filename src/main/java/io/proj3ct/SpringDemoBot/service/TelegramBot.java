@@ -30,8 +30,8 @@ public class TelegramBot extends TelegramLongPollingBot {
         List<BotCommand> commands = new ArrayList<>();
         commands.add(new BotCommand("/start", "зарегистрироваться"));
         commands.add(new BotCommand("/help", "вынести окно с командами"));
-        commands.add(new BotCommand("/mydata", "показать сохраненные данные"));
-        commands.add(new BotCommand("/deletedata", "удалить данные"));
+        commands.add(new BotCommand("/mypreferences", "показать сохраненные предпочтения"));
+        commands.add(new BotCommand("/anime", "посоветовать аниме"));
         commands.add(new BotCommand("/settings", "установить свои настройки"));
         try {
             execute(new SetMyCommands(commands, new BotCommandScopeDefault(), null));

@@ -1,7 +1,9 @@
 package io.proj3ct.SpringDemoBot.service;
 
 import com.vdurmont.emoji.EmojiParser;
+import io.proj3ct.SpringDemoBot.entity.Anime;
 import io.proj3ct.SpringDemoBot.entity.BotUser;
+import io.proj3ct.SpringDemoBot.repository.IAnimeRepository;
 import io.proj3ct.SpringDemoBot.repository.IUserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,16 +17,21 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.Random;
 
 @Service
 @Slf4j
 public class MessageService {
-    private static final String SERIAL_BUTTON = "SERIAL_BUTTON";
-    private static final String FILM_BUTTON = "FILM_BUTTON";
+    private static final String TV_BUTTON = "TV_BUTTON";
+    private static final String MOVIE_BUTTON = "MOVIE_BUTTON";
     private static final String NONE_BUTTON = "NONE_BUTTON";
 
     @Autowired
     private IUserRepository userRepository;
+
+    @Autowired
+    private IAnimeRepository animeRepository;
 
     public SendMessage messageReceiver(Update update) {
         if (update.hasMessage() && update.getMessage().hasText()) {
@@ -45,6 +52,25 @@ public class MessageService {
                     chooseKind(answer);
                     break;
                 }
+                case "/anime": {
+                    long count = animeRepository.count();
+                    if (count == 0) {
+                        answer = createMessage(chatId, "В базе данных пока нет аниме 😢");
+                        break;
+                    }
+
+                    Random random = new Random(); //todo
+                    long id = random.nextLong(count) + 1;
+
+                    Optional<Anime> animeOptional = animeRepository.findById(String.valueOf(id));
+                    if (animeOptional.isPresent()) {
+                        Anime anime = animeOptional.get();
+                        answer = createMessage(chatId, formatAnimeInformation(anime));
+                    } else {
+                        answer = createMessage(chatId, "Аниме не найдено 😢");
+                    }
+                    break;
+                }
                 default: {
                     String answerText = EmojiParser.parseToUnicode("Я не знаю такую команду " + ":confused:");
                     answer = createMessage(chatId, answerText);
@@ -63,10 +89,10 @@ public class MessageService {
 
         String answerText = "";
         switch (callbackData) {
-            case SERIAL_BUTTON:
+            case TV_BUTTON:
                 answerText = "Вы выбрали сериалы.";
                 break;
-            case FILM_BUTTON:
+            case MOVIE_BUTTON:
                 answerText = "Вы выбрали фильмы";
                 break;
             case NONE_BUTTON:
@@ -107,11 +133,11 @@ public class MessageService {
         List<InlineKeyboardButton> row = new ArrayList<>();
         var serialButton = new InlineKeyboardButton();
         serialButton.setText("Сериал");
-        serialButton.setCallbackData(SERIAL_BUTTON);
+        serialButton.setCallbackData(TV_BUTTON);
 
         var filmButton = new InlineKeyboardButton();
         filmButton.setText("Фильм");
-        filmButton.setCallbackData(FILM_BUTTON);
+        filmButton.setCallbackData(MOVIE_BUTTON);
 
         var noneButton = new InlineKeyboardButton();
         noneButton.setText("Любой");
@@ -123,5 +149,23 @@ public class MessageService {
         rows.add(row);
         markupInline.setKeyboard(rows);
         message.setReplyMarkup(markupInline);
+    }
+
+    private String formatAnimeInformation(Anime anime) {
+        return String.format(
+                "🎥 *%s* (%s)\n\n" +
+                        "⭐ Рейтинг: %.2f\n" +
+                        "📺 Тип: %s\n" +
+                        "📅 Статус: %s\n" +
+                        "🎬 Эпизоды: %d\n\n" +
+                        "[Подробнее] (https://shikimori.one%s)",
+                anime.getName(),
+                anime.getRussian().isEmpty() ? "нет перевода" : anime.getRussian(),
+                anime.getScore(),
+                anime.getKind(),
+                anime.getStatus(),
+                anime.getEpisodes(),
+                anime.getUrl()
+        );
     }
 }

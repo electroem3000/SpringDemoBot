@@ -42,9 +42,10 @@ public class BotConfig {
         try {
             ObjectMapper objectMapper = new ObjectMapper();
             TypeFactory typeFactory = objectMapper.getTypeFactory();
-            List<Anime> jokeList = objectMapper.readValue(new File("anime.json"),
+            List<Anime> animeList = objectMapper.readValue(new File("anime.json"),
                     typeFactory.constructCollectionType(List.class, Anime.class));
-            animeRepository.saveAll(jokeList);
+            animeList.forEach(anime -> anime.setId(null));
+            animeRepository.saveAll(animeList);
         } catch (Exception e) {
             log.error("Ошибка при загрузке данных");
         }
