@@ -1,6 +1,5 @@
 package io.proj3ct.SpringDemoBot.service;
 
-import com.vdurmont.emoji.EmojiParser;
 import io.proj3ct.SpringDemoBot.entity.Anime;
 import io.proj3ct.SpringDemoBot.entity.BotUser;
 import io.proj3ct.SpringDemoBot.repository.IAnimeRepository;
@@ -25,7 +24,8 @@ import java.util.Random;
 public class MessageService {
     private static final String TV_BUTTON = "TV_BUTTON";
     private static final String MOVIE_BUTTON = "MOVIE_BUTTON";
-    private static final String NONE_BUTTON = "NONE_BUTTON";
+    private static final String DEFAULT_KIND = "tv";
+    private static final String DEFAULT_STATUS = "released";
 
     @Autowired
     private IUserRepository userRepository;
@@ -42,27 +42,26 @@ public class MessageService {
             SendMessage answer;
             switch (receivedText) {
                 case "/start": {
-                    String answerText = EmojiParser.parseToUnicode("Привет, " + name + "! " + ":blush:");
-                    answer = createMessage(chatId, answerText);
-                    registerUser(update.getMessage());
+                    answer = createMessage(chatId, "Привет, " + name + "! 😊");
+                    registerUser(new BotUser(chatId, DEFAULT_STATUS, DEFAULT_KIND));
                     break;
                 }
                 case "/settings": {
                     answer = createMessage(chatId, "Выберите тип аниме.");
-                    chooseKind(answer);
+                    addKindButtons(answer);
                     break;
                 }
                 case "/anime": {
-                    long count = animeRepository.count();
-                    if (count == 0) {
-                        answer = createMessage(chatId, "В базе данных пока нет аниме 😢");
-                        break;
-                    }
+                    BotUser user = userRepository.findById(chatId).orElseGet(() -> {
+                        BotUser botUser = new BotUser(chatId, DEFAULT_STATUS, DEFAULT_KIND);
+                        registerUser(botUser);
+                        return botUser;
+                    });
 
-                    Random random = new Random(); //todo
-                    long id = random.nextLong(count) + 1;
+                    String kind = user.getKind();
+                    String status = user.getStatus();
 
-                    Optional<Anime> animeOptional = animeRepository.findById(String.valueOf(id));
+                    Optional<Anime> animeOptional = animeRepository.findByRandom(kind, status);
                     if (animeOptional.isPresent()) {
                         Anime anime = animeOptional.get();
                         answer = createMessage(chatId, formatAnimeInformation(anime));
@@ -72,8 +71,7 @@ public class MessageService {
                     break;
                 }
                 default: {
-                    String answerText = EmojiParser.parseToUnicode("Я не знаю такую команду " + ":confused:");
-                    answer = createMessage(chatId, answerText);
+                    answer = createMessage(chatId, "Я не знаю такую команду 😕");
                     break;
                 }
             }
@@ -82,25 +80,33 @@ public class MessageService {
         return null;
     }
 
+
+    // todo
     public EditMessageText messageEditor(Update update) {
         String callbackData = update.getCallbackQuery().getData();
         Integer messageId = update.getCallbackQuery().getMessage().getMessageId();
         Long chatId = update.getCallbackQuery().getMessage().getChatId();
 
+        BotUser user = userRepository.findById(chatId).orElseGet(() -> {
+            BotUser botUser = new BotUser(chatId, DEFAULT_STATUS, DEFAULT_KIND);
+            registerUser(botUser);
+            return botUser;
+        });
+
         String answerText = "";
         switch (callbackData) {
             case TV_BUTTON:
                 answerText = "Вы выбрали сериалы.";
+                user.setKind("tv");
                 break;
             case MOVIE_BUTTON:
                 answerText = "Вы выбрали фильмы";
-                break;
-            case NONE_BUTTON:
-                answerText = "Вы выбрали любой тип";
+                user.setKind("movie");
                 break;
             default:
                 break;
         }
+        userRepository.save(user);
         EditMessageText answer = new EditMessageText();
         answer.setChatId(String.valueOf(chatId));
         answer.setText(answerText);
@@ -108,13 +114,8 @@ public class MessageService {
         return answer;
     }
 
-    private void registerUser(Message message) {
-        if (userRepository.findById(message.getChatId()).isEmpty()) {
-            BotUser botUser = new BotUser();
-            botUser.setChatId(message.getChatId());
-            botUser.setKind("None");
-            botUser.setStatus("None");
-
+    private void registerUser(BotUser botUser) {
+        if (userRepository.findById(botUser.getChatId()).isEmpty()) {
             userRepository.save(botUser);
             log.info("User saved: " + botUser);
         }
@@ -127,7 +128,7 @@ public class MessageService {
         return message;
     }
 
-    private void chooseKind(SendMessage message) {
+    private void addKindButtons(SendMessage message) {
         InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> rows = new ArrayList<>();
         List<InlineKeyboardButton> row = new ArrayList<>();
@@ -139,13 +140,8 @@ public class MessageService {
         filmButton.setText("Фильм");
         filmButton.setCallbackData(MOVIE_BUTTON);
 
-        var noneButton = new InlineKeyboardButton();
-        noneButton.setText("Любой");
-        noneButton.setCallbackData(NONE_BUTTON);
-
         row.add(serialButton);
         row.add(filmButton);
-        row.add(noneButton);
         rows.add(row);
         markupInline.setKeyboard(rows);
         message.setReplyMarkup(markupInline);
