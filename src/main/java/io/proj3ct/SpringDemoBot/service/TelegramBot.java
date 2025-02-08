@@ -32,7 +32,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         commands.add(new BotCommand("/help", "вынести окно с командами"));
         commands.add(new BotCommand("/mypreferences", "показать сохраненные предпочтения"));
         commands.add(new BotCommand("/anime", "посоветовать аниме"));
-        commands.add(new BotCommand("/settings", "установить свои настройки"));
+        commands.add(new BotCommand("/settings", "установить свои предпочтения"));
         try {
             execute(new SetMyCommands(commands, new BotCommandScopeDefault(), null));
         } catch (TelegramApiException e) {
@@ -43,7 +43,7 @@ public class TelegramBot extends TelegramLongPollingBot {
     @Override
     public void onUpdateReceived(Update update) {
         try {
-            executeMessage(update);
+            execute(messageService.processUpdate(update));
         } catch (TelegramApiException e) {
             log.error("Ошибка при ответе пользователю!");
         }
@@ -57,13 +57,5 @@ public class TelegramBot extends TelegramLongPollingBot {
     @Override
     public String getBotToken() {
         return botProperties.token();
-    }
-
-    private void executeMessage(Update update) throws TelegramApiException {
-        if (update.hasMessage()) {
-            execute(messageService.messageReceiver(update));
-        } else if (update.hasCallbackQuery()) {
-            execute(messageService.messageEditor(update));
-        }
     }
 }

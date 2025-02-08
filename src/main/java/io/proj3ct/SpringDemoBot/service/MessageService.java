@@ -7,8 +7,10 @@ import io.proj3ct.SpringDemoBot.repository.IUserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.telegram.telegrambots.meta.api.methods.BotApiMethod;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
+import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
@@ -17,13 +19,13 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.Random;
 
 @Service
 @Slf4j
 public class MessageService {
     private static final String TV_BUTTON = "TV_BUTTON";
     private static final String MOVIE_BUTTON = "MOVIE_BUTTON";
+
     private static final String DEFAULT_KIND = "tv";
     private static final String DEFAULT_STATUS = "released";
 
@@ -33,65 +35,21 @@ public class MessageService {
     @Autowired
     private IAnimeRepository animeRepository;
 
-    public SendMessage messageReceiver(Update update) {
-        if (update.hasMessage() && update.getMessage().hasText()) {
-            String receivedText = update.getMessage().getText();
-            String name = update.getMessage().getFrom().getFirstName();
-            Long chatId = update.getMessage().getChatId();
-
-            SendMessage answer;
-            switch (receivedText) {
-                case "/start": {
-                    answer = createMessage(chatId, "Привет, " + name + "! 😊");
-                    registerUser(new BotUser(chatId, DEFAULT_STATUS, DEFAULT_KIND));
-                    break;
-                }
-                case "/settings": {
-                    answer = createMessage(chatId, "Выберите тип аниме.");
-                    addKindButtons(answer);
-                    break;
-                }
-                case "/anime": {
-                    BotUser user = userRepository.findById(chatId).orElseGet(() -> {
-                        BotUser botUser = new BotUser(chatId, DEFAULT_STATUS, DEFAULT_KIND);
-                        registerUser(botUser);
-                        return botUser;
-                    });
-
-                    String kind = user.getKind();
-                    String status = user.getStatus();
-
-                    Optional<Anime> animeOptional = animeRepository.findByRandom(kind, status);
-                    if (animeOptional.isPresent()) {
-                        Anime anime = animeOptional.get();
-                        answer = createMessage(chatId, formatAnimeInformation(anime));
-                    } else {
-                        answer = createMessage(chatId, "Аниме не найдено 😢");
-                    }
-                    break;
-                }
-                default: {
-                    answer = createMessage(chatId, "Я не знаю такую команду 😕");
-                    break;
-                }
-            }
-            return answer;
+    public BotApiMethod<?> processUpdate(Update update) {
+        if (update.hasCallbackQuery()) {
+            return processCallbackQuery(update.getCallbackQuery());
+        } else if (update.hasMessage() && update.getMessage().hasText()) {
+            return processMessage(update.getMessage());
         }
         return null;
     }
 
+    private BotApiMethod<?> processCallbackQuery(CallbackQuery callbackQuery) {
+        String callbackData = callbackQuery.getData();
+        Integer messageId = callbackQuery.getMessage().getMessageId();
+        Long chatId = callbackQuery.getMessage().getChatId();
 
-    // todo
-    public EditMessageText messageEditor(Update update) {
-        String callbackData = update.getCallbackQuery().getData();
-        Integer messageId = update.getCallbackQuery().getMessage().getMessageId();
-        Long chatId = update.getCallbackQuery().getMessage().getChatId();
-
-        BotUser user = userRepository.findById(chatId).orElseGet(() -> {
-            BotUser botUser = new BotUser(chatId, DEFAULT_STATUS, DEFAULT_KIND);
-            registerUser(botUser);
-            return botUser;
-        });
+        BotUser user = getOrRegisterUser(chatId);
 
         String answerText = "";
         switch (callbackData) {
@@ -100,18 +58,67 @@ public class MessageService {
                 user.setKind("tv");
                 break;
             case MOVIE_BUTTON:
-                answerText = "Вы выбрали фильмы";
+                answerText = "Вы выбрали фильмы.";
                 user.setKind("movie");
                 break;
             default:
+                answerText = "Неверное действие";
                 break;
         }
         userRepository.save(user);
-        EditMessageText answer = new EditMessageText();
-        answer.setChatId(String.valueOf(chatId));
-        answer.setText(answerText);
-        answer.setMessageId(messageId);
-        return answer;
+
+        EditMessageText editMessage = new EditMessageText();
+        editMessage.setChatId(String.valueOf(chatId));
+        editMessage.setMessageId(messageId);
+        editMessage.setText(answerText);
+
+        return editMessage;
+    }
+
+    private BotApiMethod<?> processMessage(Message message) {
+        String receivedText = message.getText();
+        Long chatId = message.getChatId();
+        SendMessage response;
+
+        switch (receivedText) {
+            case "/start": {
+                String name = message.getFrom().getFirstName();
+                response = createMessage(chatId, "Привет, " + name + "! 😊");
+                registerUser(new BotUser(chatId, DEFAULT_STATUS, DEFAULT_KIND));
+                break;
+            }
+            case "/settings": {
+                response = createMessage(chatId, "Выберите тип аниме.");
+                addKindButtons(response);
+                break;
+            }
+            case "/anime": {
+                BotUser user = getOrRegisterUser(chatId);
+                String kind = user.getKind();
+                String status = user.getStatus();
+
+                Optional<Anime> animeOptional = animeRepository.findByRandom(kind, status);
+                if (animeOptional.isPresent()) {
+                    Anime anime = animeOptional.get();
+                    response = createMessage(chatId, formatAnimeInformation(anime));
+                } else {
+                    response = createMessage(chatId, "Аниме не найдено 😢");
+                }
+                break;
+            }
+            default: {
+                response = createMessage(chatId, "Я не знаю такую команду 😕");
+                break;
+            }
+        }
+        return response;
+    }
+
+    private SendMessage createMessage(Long chatId, String text) {
+        SendMessage message = new SendMessage();
+        message.setChatId(String.valueOf(chatId));
+        message.setText(text);
+        return message;
     }
 
     private void registerUser(BotUser botUser) {
@@ -121,11 +128,13 @@ public class MessageService {
         }
     }
 
-    private SendMessage createMessage(Long chatId, String text) {
-        SendMessage message = new SendMessage();
-        message.setChatId(String.valueOf(chatId));
-        message.setText(text);
-        return message;
+    private BotUser getOrRegisterUser(Long chatId) {
+        return userRepository.findById(chatId)
+                .orElseGet(() -> {
+                    BotUser botUser = new BotUser(chatId, DEFAULT_STATUS, DEFAULT_KIND);
+                    registerUser(botUser);
+                    return botUser;
+                });
     }
 
     private void addKindButtons(SendMessage message) {
