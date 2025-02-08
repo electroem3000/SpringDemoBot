@@ -16,15 +16,18 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
 public class MessageService {
     private static final String TV_BUTTON = "TV_BUTTON";
     private static final String MOVIE_BUTTON = "MOVIE_BUTTON";
+    private static final String RELEASED_BUTTON = "RELEASED_BUTTON";
+    private static final String ONGOING_BUTTON = "ONGOING_BUTTON";
+    private static final String ANONS_BUTTON = "ANONS_BUTTON";
 
     private static final String DEFAULT_KIND = "tv";
     private static final String DEFAULT_STATUS = "released";
@@ -54,12 +57,24 @@ public class MessageService {
         String answerText = "";
         switch (callbackData) {
             case TV_BUTTON:
-                answerText = "Вы выбрали сериалы.";
+                answerText = "Вы выбрали TV (многосерийные аниме).";
                 user.setKind("tv");
                 break;
             case MOVIE_BUTTON:
-                answerText = "Вы выбрали фильмы.";
+                answerText = "Вы выбрали movie (полнометражные аниме).";
                 user.setKind("movie");
+                break;
+            case RELEASED_BUTTON:
+                answerText = "Вы выбрали released (полностью вышедшие аниме)";
+                user.setStatus("released");
+                break;
+            case ONGOING_BUTTON:
+                answerText = "Вы выбрали ongoing (аниме, которые выходят прямо сейчас)";
+                user.setStatus("ongoing");
+                break;
+            case ANONS_BUTTON:
+                answerText = "Вы выбрали  anons (аниме, которые только планируются к выпуску)";
+                user.setStatus("anons");
                 break;
             default:
                 answerText = "Неверное действие";
@@ -83,13 +98,18 @@ public class MessageService {
         switch (receivedText) {
             case "/start": {
                 String name = message.getFrom().getFirstName();
-                response = createMessage(chatId, "Привет, " + name + "! 😊");
+                response = createMessage(chatId, BotMessages.START_MESSAGE);
                 registerUser(new BotUser(chatId, DEFAULT_STATUS, DEFAULT_KIND));
                 break;
             }
-            case "/settings": {
-                response = createMessage(chatId, "Выберите тип аниме.");
+            case "/kind": {
+                response = createMessage(chatId, BotMessages.CHOOSE_ANIME_KIND);
                 addKindButtons(response);
+                break;
+            }
+            case "/status": {
+                response = createMessage(chatId, BotMessages.CHOOSE_ANIME_STATUS);
+                addStatusButtons(response);
                 break;
             }
             case "/anime": {
@@ -100,10 +120,19 @@ public class MessageService {
                 Optional<Anime> animeOptional = animeRepository.findByRandom(kind, status);
                 if (animeOptional.isPresent()) {
                     Anime anime = animeOptional.get();
-                    response = createMessage(chatId, formatAnimeInformation(anime));
+                    response = createMessage(chatId, BotMessages.getAnimeInformationText(anime));
                 } else {
                     response = createMessage(chatId, "Аниме не найдено 😢");
                 }
+                break;
+            }
+            case "/mypreferences": {
+                BotUser user = getOrRegisterUser(chatId);
+                response = createMessage(chatId, BotMessages.getUserPreferencesText(user));
+                break;
+            }
+            case "/help": {
+                response = createMessage(chatId, BotMessages.HELP_MESSAGE);
                 break;
             }
             default: {
@@ -137,40 +166,40 @@ public class MessageService {
                 });
     }
 
-    private void addKindButtons(SendMessage message) {
-        InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
-        List<List<InlineKeyboardButton>> rows = new ArrayList<>();
-        List<InlineKeyboardButton> row = new ArrayList<>();
-        var serialButton = new InlineKeyboardButton();
-        serialButton.setText("Сериал");
-        serialButton.setCallbackData(TV_BUTTON);
 
-        var filmButton = new InlineKeyboardButton();
-        filmButton.setText("Фильм");
-        filmButton.setCallbackData(MOVIE_BUTTON);
-
-        row.add(serialButton);
-        row.add(filmButton);
-        rows.add(row);
-        markupInline.setKeyboard(rows);
-        message.setReplyMarkup(markupInline);
+    private void addStatusButtons(SendMessage message) {
+        message.setReplyMarkup(createInlineKeyboard(
+                List.of(
+                        createButton("Released", RELEASED_BUTTON),
+                        createButton("Ongoing", ONGOING_BUTTON),
+                        createButton("Anons", ANONS_BUTTON)
+                )
+        ));
     }
 
-    private String formatAnimeInformation(Anime anime) {
-        return String.format(
-                "🎥 *%s* (%s)\n\n" +
-                        "⭐ Рейтинг: %.2f\n" +
-                        "📺 Тип: %s\n" +
-                        "📅 Статус: %s\n" +
-                        "🎬 Эпизоды: %d\n\n" +
-                        "[Подробнее] (https://shikimori.one%s)",
-                anime.getName(),
-                anime.getRussian().isEmpty() ? "нет перевода" : anime.getRussian(),
-                anime.getScore(),
-                anime.getKind(),
-                anime.getStatus(),
-                anime.getEpisodes(),
-                anime.getUrl()
-        );
+    private void addKindButtons(SendMessage message) {
+        message.setReplyMarkup(createInlineKeyboard(
+                List.of(
+                        createButton("TV", TV_BUTTON),
+                        createButton("Movie", MOVIE_BUTTON)
+                )
+        ));
+    }
+
+    private InlineKeyboardButton createButton(String text, String callbackData) {
+        InlineKeyboardButton button = new InlineKeyboardButton();
+        button.setText(text);
+        button.setCallbackData(callbackData);
+        return button;
+    }
+
+    private InlineKeyboardMarkup createInlineKeyboard(List<InlineKeyboardButton> buttons) {
+        List<List<InlineKeyboardButton>> rows = buttons.stream()
+                .map(List::of)
+                .collect(Collectors.toList());
+
+        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+        markup.setKeyboard(rows);
+        return markup;
     }
 }

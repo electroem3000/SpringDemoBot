@@ -32,7 +32,8 @@ public class TelegramBot extends TelegramLongPollingBot {
         commands.add(new BotCommand("/help", "вынести окно с командами"));
         commands.add(new BotCommand("/mypreferences", "показать сохраненные предпочтения"));
         commands.add(new BotCommand("/anime", "посоветовать аниме"));
-        commands.add(new BotCommand("/settings", "установить свои предпочтения"));
+        commands.add(new BotCommand("/kind", "выбрать тип аниме"));
+        commands.add(new BotCommand("/status", "выбрать статус выхода аниме"));
         try {
             execute(new SetMyCommands(commands, new BotCommandScopeDefault(), null));
         } catch (TelegramApiException e) {
